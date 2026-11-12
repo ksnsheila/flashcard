@@ -30,7 +30,7 @@
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      padding: 5px;
+      padding: 10px; /* 手機端邊距稍微縮小 */
     }
 
     .container {
@@ -38,24 +38,24 @@
       max-width: 600px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 15px; /* 手機端間距稍微縮小 */
     }
 
     /* 頂部控制列 */
     .header-controls {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
       background: var(--card-bg);
-      padding: 14px 18px;
-      border-radius: 14px;
+      padding: 12px 15px;
+      border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       border: 1px solid var(--border);
     }
 
     select {
       flex: 1;
-      padding: 10px 14px;
+      padding: 10px;
       font-size: 16px;
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -70,7 +70,7 @@
     }
 
     button {
-      padding: 10px 18px;
+      padding: 10px 15px;
       font-size: 15px;
       font-weight: 600;
       border: none;
@@ -80,7 +80,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 5px;
     }
 
     .btn-restart {
@@ -96,7 +96,9 @@
     /* 卡片區域 (3D 翻轉容器) */
     .card-scene {
       width: 100%;
-      height: 440px;
+      height: 70vh; /* 使用螢幕高度的 70%，在手機上更長 */
+      max-height: 600px; /* 限制最大高度，避免在平板上過長 */
+      min-height: 400px; /* 限制最小高度 */
       perspective: 1200px;
       cursor: pointer;
       user-select: none;
@@ -128,82 +130,105 @@
       flex-direction: column;
     }
 
-    /* 牌面設計 (Front) - 白色背景 */
+    /* 牌面設計 (Front) */
     .card-front {
       background: var(--card-bg);
-      padding: 5px;
+      padding: 15px; /* 手機端邊距縮小 */
+      position: relative;
     }
 
-    /* 模式 1：圖片 + 文字 (80% 圖片 / 20% 文字) */
-    .card-front.mode-both .img-box {
-      height: 80%;
+    /* 圖片容器通用樣式 - 這是優化的核心 */
+    .img-box {
       width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding-bottom: 12px;
+      flex-grow: 1; /* 盡量佔滿垂直空間 */
+      overflow: hidden;
+      margin-bottom: 5px; /* 與下方元素的間距 */
     }
 
-    .card-front.mode-both .prompt-box {
-      height: 20%;
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      font-size: 1.35rem;
-      font-weight: 700;
-      border-top: 1px solid var(--border);
-      padding-top: 8px;
-    }
-
-    /* 模式 2：純圖片 (100% 置中) */
-    .card-front.mode-img .img-box {
-      height: 100%;
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* 模式 3：純文字 (100% 置中) */
-    .card-front.mode-text .prompt-box {
-      height: 100%;
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      font-size: 1.8rem;
-      font-weight: 700;
-      padding: 20px;
-      line-height: 1.4;
-    }
-
-    /* 圖片等比例縮放，不裁切、不壓扁 */
+    /* 圖片樣式 - 核心：object-fit: contain */
     .img-box img {
-      max-width: 100%;
-      max-height: 100%;
-      width: auto;
-      height: auto;
-      object-fit: contain;
+      width: 100%;
+      height: 100%;
+      object-fit: contain; /* 確保不壓扁、不截走，盡量放大 */
       border-radius: 8px;
     }
 
+    /* 文字提示容器共通樣式 */
+    .prompt-box {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-weight: 700;
+      color: var(--text-main);
+      flex-shrink: 0; /* 縮小也維持文字不消失 */
+    }
+
+    /* 模式 1：圖片 + 文字提示 (圖片盡量長高) */
+    .card-front.mode-both {
+      justify-content: space-between; /* 圖片和文字兩頭靠 */
+    }
+
+    .card-front.mode-both .img-box {
+      /* 不再硬性設定高度，透過 flex-grow 自動長高 */
+      margin-bottom: 10px;
+    }
+
+    .card-front.mode-both .prompt-box {
+      font-size: 1.15rem;
+      padding: 8px 0;
+      border-top: 1px solid var(--border);
+      /* 限制文字提示的最大高度，其餘空間讓給圖片 */
+      max-height: 15%; 
+    }
+
+    /* 模式 2：純圖片 (圖片幾乎填滿整個卡片) */
+    .card-front.mode-img .img-box {
+      height: calc(100% - 25px); /* 除了點擊翻面提示外，全給圖片 */
+      width: 100%;
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: calc(100% - 30px);
+    }
+
+    /* 模式 3：純文字提示 (文字置中) */
+    .card-front.mode-text {
+      justify-content: center;
+      align-items: center;
+    }
+
+    .card-front.mode-text .prompt-box {
+      font-size: 1.6rem;
+      padding: 20px;
+      line-height: 1.4;
+      height: 100%;
+      white-space: pre-line;
+    }
+
+    /* 點擊翻面提示 - 改為浮動在右下角，不佔空間 */
     .flip-hint {
       position: absolute;
-      bottom: 10px;
-      right: 16px;
+      bottom: 8px;
+      right: 12px;
       font-size: 12px;
       color: #94a3b8;
       pointer-events: none;
+      z-index: 5;
+      background-color: rgba(255, 255, 255, 0.7); /* 半透明背景確保清晰 */
+      padding: 2px 5px;
+      border-radius: 4px;
     }
 
     /* 牌底設計 (Back) - 淺米黃色背景 */
     .card-back {
       background: var(--card-back-bg);
       transform: rotateY(180deg);
-      padding: 32px 28px;
+      padding: 25px 20px; /* 手機端邊距縮小 */
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -211,29 +236,31 @@
     }
 
     .back-title {
-      font-size: 2.5rem;
+      font-size: 1.6rem; /* 手機端稍微縮小 */
       font-weight: 800;
       color: var(--primary);
       text-align: center;
-      margin-bottom: 20px;
-      padding-bottom: 14px;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
       border-bottom: 2px solid #e9e5d8;
       width: 100%;
+      flex-shrink: 0;
     }
 
     .back-content {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       width: 100%;
       max-width: 480px;
-      font-size: 1rem;
-      line-height: 1.6;
+      font-size: 1.1rem; /* 手機端稍微縮小 */
+      line-height: 1.5;
       color: var(--text-main);
       text-align: left;
       white-space: pre-line;
       align-self: flex-start;
-      padding-left: 10px;
+      padding: 0 5px;
+      flex-grow: 1;
     }
 
     /* 完成畫面 */
@@ -283,8 +310,8 @@
       justify-content: space-between;
       align-items: center;
       background: var(--card-bg);
-      padding: 14px 20px;
-      border-radius: 14px;
+      padding: 12px 15px;
+      border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       border: 1px solid var(--border);
     }
@@ -292,7 +319,9 @@
     .btn-nav {
       background-color: var(--primary);
       color: white;
-      min-width: 100px;
+      min-width: 90px;
+      font-size: 14px;
+      padding: 10px;
     }
 
     .btn-nav:hover:not(:disabled) {
@@ -306,14 +335,16 @@
     }
 
     .progress-text {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       color: var(--text-sub);
     }
 
     /* 載入與完成狀態 */
     .status-box {
-      height: 440px;
+      height: 70vh; /* 與卡片場景高度一致 */
+      max-height: 600px;
+      min-height: 400px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -373,7 +404,9 @@
     <div id="cardScene" class="card-scene hidden">
       <div id="flashcard" class="card">
         <!-- 牌面 -->
-        <div id="cardFront" class="card-face card-front"></div>
+        <div id="cardFront" class="card-face card-front">
+          <!-- 內容由 JS 動態生成 -->
+        </div>
         <!-- 牌底 -->
         <div id="cardBack" class="card-face card-back">
           <div id="backTitle" class="back-title"></div>
@@ -616,23 +649,26 @@
       const hasPrompt = card.prompt !== '';
 
       if (hasImg && hasPrompt) {
+        // 模式 1：圖片 + 文字提示
         cardFront.classList.add('mode-both');
         cardFront.innerHTML = `
           <div class="img-box"><img src="${card.image}" alt="記憶卡圖片"></div>
           <div class="prompt-box">${parseFormattedText(card.prompt)}</div>
-          <span class="flip-hint">點擊翻面</span>
+          <span class="flip-hint">點擊翻面提示</span>
         `;
       } else if (hasImg) {
+        // 模式 2：純圖片
         cardFront.classList.add('mode-img');
         cardFront.innerHTML = `
           <div class="img-box"><img src="${card.image}" alt="記憶卡圖片"></div>
-          <span class="flip-hint">點擊翻面</span>
+          <span class="flip-hint">點擊翻面提示</span>
         `;
       } else {
+        // 模式 3：純文字提示
         cardFront.classList.add('mode-text');
         cardFront.innerHTML = `
           <div class="prompt-box">${parseFormattedText(card.prompt || '(無題目內容)')}</div>
-          <span class="flip-hint">點擊翻面</span>
+          <span class="flip-hint">點擊翻面提示</span>
         `;
       }
 
