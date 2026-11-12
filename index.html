@@ -343,7 +343,7 @@
 
   <script>
     // ==========================================
-    // 🔴 請在此貼上你的 Google 試算表發布的 CSV 網址
+    // 🔴 請在此貼上你的 Google 試算表發布 CSV 網址
     // ==========================================
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQDmaC8RhVrCMBjicm_ce-Dn4i9Saqu_Tcj7uRtDaQ060bfRrHRebrqlWUnTpvlaalx8JWXZRHGiCxf/pub?output=csv';
 
@@ -367,7 +367,6 @@
     const nextBtn = document.getElementById('nextBtn');
     const progressText = document.getElementById('progressText');
 
-    // 簡易 CSV 解析器（支援引號包覆內含逗號的欄位）
     function parseCSV(text) {
       let lines = [];
       let row = [''];
@@ -418,7 +417,6 @@
           throw new Error('試算表內容過少或格式不正確。');
         }
 
-        // 第一列為標題列
         const headers = rows[0].map(h => h.trim());
         const dataRows = rows.slice(1);
 
@@ -436,7 +434,6 @@
       rows.forEach(cols => {
         if (cols.length === 0 || !cols[0].trim()) return;
 
-        // 依據欄位順序對應：A欄(deck), B欄(image), C欄(prompt), D欄(title), E欄之後(descriptions)
         const deckName = (cols[0] || '').trim();
         const imageUrl = (cols[1] || '').trim();
         const promptText = (cols[2] || '').trim();
@@ -499,6 +496,19 @@
       renderCard();
     }
 
+    // 動態解析自訂色碼標籤（例如 [#ff0000]文字[/#]）
+    function parseFormattedText(text) {
+      if (!text) return '';
+      let div = document.createElement('div');
+      div.textContent = text;
+      let safeText = div.innerHTML;
+
+      // 透過正規表達式將 [#hex色碼] 轉換為 inline style 顏色
+      safeText = safeText.replace(/\[#([0-9a-fA-F]{3,6})\](.*?)\[\/#\]/g, '<span style="color: #$1;">$2</span>');
+
+      return safeText;
+    }
+
     function renderCard() {
       isFlipped = false;
       flashcard.style.transition = 'none';
@@ -518,7 +528,7 @@
         cardFront.classList.add('mode-both');
         cardFront.innerHTML = `
           <div class="img-box"><img src="${card.image}" alt="記憶卡圖片"></div>
-          <div class="prompt-box">${escapeHtml(card.prompt)}</div>
+          <div class="prompt-box">${parseFormattedText(card.prompt)}</div>
           <span class="flip-hint">點擊翻面</span>
         `;
       } else if (hasImg) {
@@ -530,18 +540,18 @@
       } else {
         cardFront.classList.add('mode-text');
         cardFront.innerHTML = `
-          <div class="prompt-box">${escapeHtml(card.prompt || '(無題目內容)')}</div>
+          <div class="prompt-box">${parseFormattedText(card.prompt || '(無題目內容)')}</div>
           <span class="flip-hint">點擊翻面</span>
         `;
       }
 
-      backTitle.textContent = card.title || '答案';
+      backTitle.innerHTML = parseFormattedText(card.title || '答案');
       backContent.innerHTML = '';
       
       if (card.descriptions.length > 0) {
         card.descriptions.forEach(desc => {
           const p = document.createElement('p');
-          p.textContent = desc;
+          p.innerHTML = parseFormattedText(desc);
           backContent.appendChild(p);
         });
       } else {
@@ -561,12 +571,6 @@
         nextBtn.textContent = '下一張 →';
         nextBtn.disabled = false;
       }
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
     }
 
     cardScene.addEventListener('click', () => {
