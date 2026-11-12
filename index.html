@@ -311,7 +311,7 @@
     <!-- 載入中畫面 -->
     <div id="loadingBox" class="status-box">
       <div class="spinner"></div>
-      <p style="color: var(--text-sub); font-weight: 500;">正在從資料庫讀取記憶卡...</p>
+      <p style="color: var(--text-sub); font-weight: 500;">正在直接從 Google 試算表讀取資料...</p>
     </div>
 
     <!-- 錯誤訊息畫面 -->
@@ -324,9 +324,7 @@
     <div id="cardScene" class="card-scene hidden">
       <div id="flashcard" class="card">
         <!-- 牌面 -->
-        <div id="cardFront" class="card-face card-front">
-          <!-- 內容由 JS 動態生成 -->
-        </div>
+        <div id="cardFront" class="card-face card-front"></div>
         <!-- 牌底 -->
         <div id="cardBack" class="card-face card-back">
           <div id="backTitle" class="back-title"></div>
@@ -345,17 +343,15 @@
 
   <script>
     // ==========================================
-    // 🔴 請在此貼上你的 SheetDB API 網址
+    // 🔴 請在此貼上你的 Google 試算表發布的 CSV 網址
     // ==========================================
-    const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/你的API代碼';
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/你的發布CSV網址/pub?output=csv';
 
-    // 狀態管理
-    let allDecks = {};        // 依卡組名稱分類的原始資料 { "卡組A": [...], "卡組B": [...] }
-    let currentDeckCards = []; // 當前洗牌後的卡組陣列
-    let currentIndex = 0;      // 當前卡片索引
-    let isFlipped = false;     // 卡片是否翻面
+    let allDecks = {};
+    let currentDeckCards = [];
+    let currentIndex = 0;
+    let isFlipped = false;
 
-    // DOM 元素
     const deckSelect = document.getElementById('deckSelect');
     const restartBtn = document.getElementById('restartBtn');
     const loadingBox = document.getElementById('loadingBox');
@@ -371,20 +367,62 @@
     const nextBtn = document.getElementById('nextBtn');
     const progressText = document.getElementById('progressText');
 
-    // 初始化：抓取 SheetDB 資料
+    // 簡易 CSV 解析器（支援引號包覆內含逗號的欄位）
+    function parseCSV(text) {
+      let lines = [];
+      let row = [''];
+      let inQuotes = false;
+      
+      for (let i = 0; i < text.length; i++) {
+        let c = text[i];
+        let nextC = text[i+1];
+        
+        if (c === '"') {
+          if (inQuotes && nextC === '"') {
+            row[row.length - 1] += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (c === ',' && !inQuotes) {
+          row.push('');
+        } else if ((c === '\r' && nextC === '\n') || c === '\n') {
+          if (c === '\r') i++;
+          lines.push(row);
+          row = [''];
+        } else {
+          row[row.length - 1] += c;
+        }
+      }
+      if (row.length > 1 || row[0] !== '') {
+        lines.push(row);
+      }
+      return lines;
+    }
+
     async function init() {
       try {
-        if (SHEETDB_API_URL.includes('你的API代碼')) {
-          throw new Error('請先在程式碼中填入正確的 SheetDB API 網址。');
+        if (CSV_URL.includes('你的發布CSV網址')) {
+          throw new Error('請先在程式碼中填入正確的 Google 試算表 CSV 網址。');
         }
 
-        const response = await fetch(SHEETDB_API_URL);
+        const response = await fetch(CSV_URL);
         if (!response.ok) {
-          throw new Error(`HTTP 錯誤狀態碼: ${response.status}`);
+          throw new Error(`無法讀取試算表，HTTP 狀態碼: ${response.status}`);
         }
 
-        const rawData = await response.json();
-        processData(rawData);
+        const csvText = await response.text();
+        const rows = parseCSV(csvText);
+
+        if (rows.length < 2) {
+          throw new Error('試算表內容過少或格式不正確。');
+        }
+
+        // 第一列為標題列
+        const headers = rows[0].map(h => h.trim());
+        const dataRows = rows.slice(1);
+
+        processData(headers, dataRows);
       } catch (err) {
         loadingBox.classList.add('hidden');
         errorBox.classList.remove('hidden');
@@ -392,26 +430,21 @@
       }
     }
 
-    // 解析並分類卡組資料
-    function processData(rows) {
+    function processData(headers, rows) {
       allDecks = {};
 
-      rows.forEach(row => {
-        // 取得所有欄位的值（按試算表從左到右的順序）
-        const keys = Object.keys(row);
-        const deckName = (row.deck || row[keys[0]] || '').trim();
-        
-        // 若該列沒有卡組名稱則跳過
-        if (!deckName) return;
+      rows.forEach(cols => {
+        if (cols.length === 0 || !cols[0].trim()) return;
 
-        const imageUrl = (row.image || row[keys[1]] || '').trim();
-        const promptText = (row.prompt || row[keys[2]] || '').trim();
-        const answerTitle = (row.title || row[keys[3]] || '').trim();
+        // 依據欄位順序對應：A欄(deck), B欄(image), C欄(prompt), D欄(title), E欄之後(descriptions)
+        const deckName = (cols[0] || '').trim();
+        const imageUrl = (cols[1] || '').trim();
+        const promptText = (cols[2] || '').trim();
+        const answerTitle = (cols[3] || '').trim();
 
-        // E 欄及之後的所有欄位皆視為牌底說明內容，不為空就收集起來
         const descriptions = [];
-        for (let i = 4; i < keys.length; i++) {
-          const val = (row[keys[i]] || '').trim();
+        for (let i = 4; i < cols.length; i++) {
+          const val = (cols[i] || '').trim();
           if (val !== '') {
             descriptions.push(val);
           }
@@ -431,10 +464,9 @@
 
       const deckNames = Object.keys(allDecks);
       if (deckNames.length === 0) {
-        throw new Error('試算表中找不到任何有效的卡組資料，請檢查第一列標題與內容。');
+        throw new Error('試算表中找不到有效的卡組資料。');
       }
 
-      // 填充下拉選單
       deckSelect.innerHTML = '';
       deckNames.forEach(name => {
         const option = document.createElement('option');
@@ -448,11 +480,9 @@
       cardScene.classList.remove('hidden');
       footerNav.classList.remove('hidden');
 
-      // 預設載入第一個卡組
       startDeck(deckNames[0]);
     }
 
-    // Fisher-Yates 洗牌演算法（隨機不重複）
     function shuffleArray(array) {
       const arr = [...array];
       for (let i = arr.length - 1; i > 0; i--) {
@@ -462,7 +492,6 @@
       return arr;
     }
 
-    // 開始或重新開始指定卡組
     function startDeck(deckName) {
       if (!allDecks[deckName]) return;
       currentDeckCards = shuffleArray(allDecks[deckName]);
@@ -470,19 +499,15 @@
       renderCard();
     }
 
-    // 渲染當前卡片
     function renderCard() {
-      // 確保切回牌面（無動畫瞬間重置，避免偷看到下一張牌底）
       isFlipped = false;
       flashcard.style.transition = 'none';
       flashcard.classList.remove('is-flipped');
-      // 強制瀏覽器重繪後恢復過渡動畫
       void flashcard.offsetWidth;
       flashcard.style.transition = 'transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1)';
 
       const card = currentDeckCards[currentIndex];
 
-      // 1. 處理牌面佈局 (B欄圖片 & C欄提示詞)
       cardFront.className = 'card-face card-front';
       cardFront.innerHTML = '';
 
@@ -490,7 +515,6 @@
       const hasPrompt = card.prompt !== '';
 
       if (hasImg && hasPrompt) {
-        // 兩者都有：上方 80% 圖片，下方 20% 提示詞
         cardFront.classList.add('mode-both');
         cardFront.innerHTML = `
           <div class="img-box"><img src="${card.image}" alt="記憶卡圖片"></div>
@@ -498,14 +522,12 @@
           <span class="flip-hint">點擊翻面</span>
         `;
       } else if (hasImg) {
-        // 只有圖片：置中顯示
         cardFront.classList.add('mode-img');
         cardFront.innerHTML = `
           <div class="img-box"><img src="${card.image}" alt="記憶卡圖片"></div>
           <span class="flip-hint">點擊翻面</span>
         `;
       } else {
-        // 只有文字（或皆無）：置中顯示提示詞
         cardFront.classList.add('mode-text');
         cardFront.innerHTML = `
           <div class="prompt-box">${escapeHtml(card.prompt || '(無題目內容)')}</div>
@@ -513,7 +535,6 @@
         `;
       }
 
-      // 2. 處理牌底內容 (D欄標題 & E欄之後多行說明)
       backTitle.textContent = card.title || '答案';
       backContent.innerHTML = '';
       
@@ -530,7 +551,6 @@
         backContent.appendChild(p);
       }
 
-      // 3. 更新進度與按鈕狀態
       progressText.textContent = `${currentIndex + 1} / ${currentDeckCards.length}`;
       prevBtn.disabled = currentIndex === 0;
       
@@ -543,30 +563,25 @@
       }
     }
 
-    // 防止 XSS 攻擊的文字轉義函式
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     }
 
-    // 事件監聽：點擊卡片翻面
     cardScene.addEventListener('click', () => {
       isFlipped = !isFlipped;
       flashcard.classList.toggle('is-flipped', isFlipped);
     });
 
-    // 事件監聽：切換卡組
     deckSelect.addEventListener('change', (e) => {
       startDeck(e.target.value);
     });
 
-    // 事件監聽：重新開始（重新洗牌）
     restartBtn.addEventListener('click', () => {
       startDeck(deckSelect.value);
     });
 
-    // 事件監聽：上一張
     prevBtn.addEventListener('click', () => {
       if (currentIndex > 0) {
         currentIndex--;
@@ -574,7 +589,6 @@
       }
     });
 
-    // 事件監聽：下一張
     nextBtn.addEventListener('click', () => {
       if (currentIndex < currentDeckCards.length - 1) {
         currentIndex++;
@@ -582,7 +596,6 @@
       }
     });
 
-    // 啟動程式
     init();
   </script>
 </body>
