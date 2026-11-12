@@ -228,10 +228,9 @@
       font-size: 1.15rem;
       line-height: 1.6;
       color: var(--text-main);
-      white-space: pre-line; /* 讓格子內的換行符號在網頁中正常顯示分行 */
     }
 
-    /* 完成畫面 */
+    /* 完成畫面 (Finished Card Face) */
     .card-finished {
       background: var(--card-bg);
       border-radius: 20px;
@@ -364,7 +363,7 @@
       <p id="errorMsg" style="color: var(--text-sub);"></p>
     </div>
 
-    <!-- 卡片主體 -->
+    <!-- 卡片主體 (正常模式) -->
     <div id="cardScene" class="card-scene hidden">
       <div id="flashcard" class="card">
         <!-- 牌面 -->
@@ -423,7 +422,6 @@
     const finishRestartBtn = document.getElementById('finishRestartBtn');
     const progressText = document.getElementById('progressText');
 
-    // 升級版 CSV 解析器：完美支援雙引號內的換行與特殊字元
     function parseCSV(text) {
       let lines = [];
       let row = [''];
@@ -444,14 +442,8 @@
           row.push('');
         } else if ((c === '\r' && nextC === '\n') || c === '\n') {
           if (c === '\r') i++;
-          if (inQuotes) {
-            // 如果在雙引號內部，把換行保留成文字的一部分
-            row[row.length - 1] += '\n';
-          } else {
-            // 在引號外部，代表換行代表新的一列
-            lines.push(row);
-            row = [''];
-          }
+          lines.push(row);
+          row = [''];
         } else {
           row[row.length - 1] += c;
         }
