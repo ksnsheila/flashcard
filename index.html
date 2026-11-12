@@ -225,10 +225,14 @@
       flex-direction: column;
       gap: 12px;
       width: 100%;
+      max-width: 480px; /* 限制內文最大寬度，靠左時排版更舒適 */
       font-size: 1.15rem;
       line-height: 1.6;
       color: var(--text-main);
+      text-align: left; /* Description 改為靠左對齊 */
       white-space: pre-line;
+      align-self: flex-start; /* 讓內容區塊靠左排列 */
+      padding-left: 10px;
     }
 
     /* 完成畫面 */
