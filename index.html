@@ -228,6 +228,47 @@
       color: var(--text-main);
     }
 
+    /* 完成畫面 (Finished Card Face) */
+    .card-finished {
+      background: var(--card-bg);
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      border: 1px solid var(--border);
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 30px;
+      gap: 20px;
+    }
+
+    .card-finished h2 {
+      font-size: 2.2rem;
+      color: var(--primary);
+      font-weight: 800;
+    }
+
+    .card-finished p {
+      font-size: 1.15rem;
+      color: var(--text-sub);
+    }
+
+    .btn-finish-restart {
+      background-color: var(--primary);
+      color: white;
+      font-size: 1.1rem;
+      padding: 12px 28px;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    .btn-finish-restart:hover {
+      background-color: var(--primary-hover);
+    }
+
     /* 底部導覽列 */
     .footer-nav {
       display: flex;
@@ -320,7 +361,7 @@
       <p id="errorMsg" style="color: var(--text-sub);"></p>
     </div>
 
-    <!-- 卡片主體 -->
+    <!-- 卡片主體 (正常模式) -->
     <div id="cardScene" class="card-scene hidden">
       <div id="flashcard" class="card">
         <!-- 牌面 -->
@@ -330,6 +371,15 @@
           <div id="backTitle" class="back-title"></div>
           <div id="backContent" class="back-content"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- 完成結算畫面 (當點擊最後一張的下一張時顯示) -->
+    <div id="finishedScene" class="card-scene hidden">
+      <div class="card-finished">
+        <h2>🎉 完成！</h2>
+        <p>你已經學完這個卡組的所有卡片囉！</p>
+        <button id="finishRestartBtn" class="btn-finish-restart">↻ 重新開始</button>
       </div>
     </div>
 
@@ -351,6 +401,7 @@
     let currentDeckCards = [];
     let currentIndex = 0;
     let isFlipped = false;
+    let isFinished = false; // 是否已完成全部卡片
 
     const deckSelect = document.getElementById('deckSelect');
     const restartBtn = document.getElementById('restartBtn');
@@ -358,6 +409,7 @@
     const errorBox = document.getElementById('errorBox');
     const errorMsg = document.getElementById('errorMsg');
     const cardScene = document.getElementById('cardScene');
+    const finishedScene = document.getElementById('finishedScene');
     const flashcard = document.getElementById('flashcard');
     const cardFront = document.getElementById('cardFront');
     const backTitle = document.getElementById('backTitle');
@@ -365,6 +417,7 @@
     const footerNav = document.getElementById('footerNav');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
+    const finishRestartBtn = document.getElementById('finishRestartBtn');
     const progressText = document.getElementById('progressText');
 
     function parseCSV(text) {
@@ -493,18 +546,29 @@
       if (!allDecks[deckName]) return;
       currentDeckCards = shuffleArray(allDecks[deckName]);
       currentIndex = 0;
+      isFinished = false;
+      
+      cardScene.classList.remove('hidden');
+      finishedScene.classList.add('hidden');
+      footerNav.classList.remove('hidden');
+      
       renderCard();
     }
 
-    // 動態解析自訂色碼標籤（例如 [#ff0000]文字[/#]）
+    // 解析自訂標籤（支援顏色與字體大小）
     function parseFormattedText(text) {
       if (!text) return '';
       let div = document.createElement('div');
       div.textContent = text;
       let safeText = div.innerHTML;
 
-      // 透過正規表達式將 [#hex色碼] 轉換為 inline style 顏色
+      // 支援色碼 [#ff0000]文字[/#]
       safeText = safeText.replace(/\[#([0-9a-fA-F]{3,6})\](.*?)\[\/#\]/g, '<span style="color: #$1;">$2</span>');
+
+      // 支援字體大小 [size=24]文字[/size]
+      safeText = safeText.replace(/\[size=(\d+)\](.*?)\[\/size\]/g, function(match, size, content) {
+        return `<span style="font-size: ${size}px;">${content}</span>`;
+      });
 
       return safeText;
     }
@@ -563,17 +627,20 @@
 
       progressText.textContent = `${currentIndex + 1} / ${currentDeckCards.length}`;
       prevBtn.disabled = currentIndex === 0;
-      
-      if (currentIndex === currentDeckCards.length - 1) {
-        nextBtn.textContent = '已完成 ✓';
-        nextBtn.disabled = true;
-      } else {
-        nextBtn.textContent = '下一張 →';
-        nextBtn.disabled = false;
-      }
+      nextBtn.textContent = '下一張 →';
+      nextBtn.disabled = false;
+    }
+
+    // 顯示完成畫面
+    function showFinishedView() {
+      isFinished = true;
+      cardScene.classList.add('hidden');
+      finishedScene.classList.remove('hidden');
+      footerNav.classList.add('hidden'); // 隱藏下方導覽列
     }
 
     cardScene.addEventListener('click', () => {
+      if (isFinished) return;
       isFlipped = !isFlipped;
       flashcard.classList.toggle('is-flipped', isFlipped);
     });
@@ -586,7 +653,12 @@
       startDeck(deckSelect.value);
     });
 
+    finishRestartBtn.addEventListener('click', () => {
+      startDeck(deckSelect.value);
+    });
+
     prevBtn.addEventListener('click', () => {
+      if (isFinished) return;
       if (currentIndex > 0) {
         currentIndex--;
         renderCard();
@@ -594,9 +666,13 @@
     });
 
     nextBtn.addEventListener('click', () => {
+      if (isFinished) return;
       if (currentIndex < currentDeckCards.length - 1) {
         currentIndex++;
         renderCard();
+      } else {
+        // 如果已經是最後一張，點擊下一張就進入完成畫面
+        showFinishedView();
       }
     });
 
