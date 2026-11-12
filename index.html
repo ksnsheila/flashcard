@@ -204,9 +204,9 @@
       background: var(--card-back-bg);
       transform: rotateY(180deg);
       padding: 32px 28px;
-      justify-content: center;
+      display: flex;
+      flex-direction: column;
       align-items: center;
-      text-align: center;
       overflow-y: auto;
     }
 
@@ -214,6 +214,7 @@
       font-size: 2.5rem;
       font-weight: 800;
       color: var(--primary);
+      text-align: center;
       margin-bottom: 20px;
       padding-bottom: 14px;
       border-bottom: 2px solid #e9e5d8;
@@ -225,13 +226,13 @@
       flex-direction: column;
       gap: 12px;
       width: 100%;
-      max-width: 480px; /* 限制內文最大寬度，靠左時排版更舒適 */
+      max-width: 480px;
       font-size: 1rem;
       line-height: 1.6;
       color: var(--text-main);
-      text-align: left; /* Description 改為靠左對齊 */
+      text-align: left;
       white-space: pre-line;
-      align-self: flex-start; /* 讓內容區塊靠左排列 */
+      align-self: flex-start;
       padding-left: 10px;
     }
 
@@ -427,7 +428,6 @@
     const finishRestartBtn = document.getElementById('finishRestartBtn');
     const progressText = document.getElementById('progressText');
 
-    // 穩健的標準 CSV 解析器（完美處理引號與換行）
     function parseCSV(text) {
       let rows = [];
       let currentRow = [];
@@ -579,16 +579,23 @@
       renderCard();
     }
 
+    // 解析自訂標籤（支援顏色、字體大小、粗體）
     function parseFormattedText(text) {
       if (!text) return '';
       let div = document.createElement('div');
       div.textContent = text;
       let safeText = div.innerHTML;
 
+      // 1. 支援色碼 [#ff0000]文字[/#]
       safeText = safeText.replace(/\[#([0-9a-fA-F]{3,6})\](.*?)\[\/#\]/g, '<span style="color: #$1;">$2</span>');
+
+      // 2. 支援字體大小 [size=24]文字[/size]
       safeText = safeText.replace(/\[size=(\d+)\](.*?)\[\/size\]/g, function(match, size, content) {
         return `<span style="font-size: ${size}px;">${content}</span>`;
       });
+
+      // 3. 支援粗體 [bold]文字[/bold]
+      safeText = safeText.replace(/\[bold\](.*?)\[\/bold\]/g, '<strong style="font-weight: bold;">$1</strong>');
 
       return safeText;
     }
