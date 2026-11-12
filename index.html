@@ -10,6 +10,7 @@
       --primary-hover: #4338ca;
       --bg: #f8fafc;
       --card-bg: #ffffff;
+      --card-back-bg: #fcfbf7; /* 淺米黃色牌底 */
       --text-main: #1e293b;
       --text-sub: #64748b;
       --border: #e2e8f0;
@@ -119,7 +120,6 @@
       height: 100%;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
-      background: var(--card-bg);
       border-radius: 20px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.08);
       border: 1px solid var(--border);
@@ -128,8 +128,9 @@
       flex-direction: column;
     }
 
-    /* 牌面設計 (Front) */
+    /* 牌面設計 (Front) - 白色背景 */
     .card-front {
+      background: var(--card-bg);
       padding: 20px;
     }
 
@@ -198,8 +199,9 @@
       pointer-events: none;
     }
 
-    /* 牌底設計 (Back) */
+    /* 牌底設計 (Back) - 淺米黃色背景 */
     .card-back {
+      background: var(--card-back-bg);
       transform: rotateY(180deg);
       padding: 32px 28px;
       justify-content: center;
@@ -214,7 +216,7 @@
       color: var(--primary);
       margin-bottom: 20px;
       padding-bottom: 14px;
-      border-bottom: 2px solid #e0e7ff;
+      border-bottom: 2px solid #e9e5d8;
       width: 100%;
     }
 
@@ -374,7 +376,7 @@
       </div>
     </div>
 
-    <!-- 完成結算畫面 (當點擊最後一張的下一張時顯示) -->
+    <!-- 完成結算畫面 -->
     <div id="finishedScene" class="card-scene hidden">
       <div class="card-finished">
         <h2>🎉 完成！</h2>
@@ -401,7 +403,7 @@
     let currentDeckCards = [];
     let currentIndex = 0;
     let isFlipped = false;
-    let isFinished = false; // 是否已完成全部卡片
+    let isFinished = false;
 
     const deckSelect = document.getElementById('deckSelect');
     const restartBtn = document.getElementById('restartBtn');
@@ -555,17 +557,13 @@
       renderCard();
     }
 
-    // 解析自訂標籤（支援顏色與字體大小）
     function parseFormattedText(text) {
       if (!text) return '';
       let div = document.createElement('div');
       div.textContent = text;
       let safeText = div.innerHTML;
 
-      // 支援色碼 [#ff0000]文字[/#]
       safeText = safeText.replace(/\[#([0-9a-fA-F]{3,6})\](.*?)\[\/#\]/g, '<span style="color: #$1;">$2</span>');
-
-      // 支援字體大小 [size=24]文字[/size]
       safeText = safeText.replace(/\[size=(\d+)\](.*?)\[\/size\]/g, function(match, size, content) {
         return `<span style="font-size: ${size}px;">${content}</span>`;
       });
@@ -631,12 +629,11 @@
       nextBtn.disabled = false;
     }
 
-    // 顯示完成畫面
     function showFinishedView() {
       isFinished = true;
       cardScene.classList.add('hidden');
       finishedScene.classList.remove('hidden');
-      footerNav.classList.add('hidden'); // 隱藏下方導覽列
+      footerNav.classList.add('hidden');
     }
 
     cardScene.addEventListener('click', () => {
@@ -671,7 +668,6 @@
         currentIndex++;
         renderCard();
       } else {
-        // 如果已經是最後一張，點擊下一張就進入完成畫面
         showFinishedView();
       }
     });
