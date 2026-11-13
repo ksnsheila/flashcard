@@ -225,7 +225,7 @@
       font-size: 1.6rem;
       font-weight: 800;
       color: var(--primary);
-      text-align: center; /* Title 維持置中 */
+      text-align: center;
       margin-bottom: 15px;
       padding-bottom: 12px;
       border-bottom: 2px solid #e9e5d8;
@@ -241,7 +241,7 @@
       font-size: 1.1rem;
       line-height: 1.6;
       color: var(--text-main);
-      text-align: left; /* Description 靠左 */
+      text-align: left;
       white-space: pre-line;
       align-self: flex-start;
       padding-left: 5px;
@@ -577,9 +577,23 @@
       return arr;
     }
 
+    // 新增：圖片背景預載入函式 (Preload Images)
+    function preloadImages(cards) {
+      cards.forEach(card => {
+        if (card.image) {
+          const img = new Image();
+          img.src = card.image; // 靜默在背景下載並存入瀏覽器快取
+        }
+      });
+    }
+
     function startDeck(deckName) {
       if (!allDecks[deckName]) return;
       currentDeckCards = shuffleArray(allDecks[deckName]);
+      
+      // 觸發背景預載入該卡組的所有圖片
+      preloadImages(currentDeckCards);
+
       currentIndex = 0;
       isFinished = false;
       
